@@ -2,7 +2,6 @@ import os
 import logging
 import requests
 from dotenv import load_dotenv
-from supabase import create_client, Client
 
 # Configuração de Logs
 logging.basicConfig(
@@ -24,19 +23,40 @@ if not all([SUPABASE_URL, SUPABASE_KEY, ZAPI_INSTANCE, ZAPI_TOKEN]):
     exit(1)
 
 def buscar_contatos() -> list:
-    # Busca os contatos cadastrados no Supabase limitando a 3 registros
+    # Busca os contatos cadastrados no Supabase usando a API REST nativa (HTTP/1.1)
+
+    # O Supabase expõe automaticamente suas tabelas neste endpoint:
+    url = f"{SUPABASE_URL}/rest/v1/contatos"
+    
+    # Autenticação padrão que o Supabase exige
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    
+    # Filtros: seleciona as colunas e limita a 3 registros
+    params = {
+        "select": "nome,telefone",
+        "limit": 3
+    }
+
     try:
-        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-        logging.info("Conectando ao Supabase para buscar contatos...")
+        logging.info("Conectando ao Supabase via API REST Nativa...")
+        resposta = requests.get(url, headers=headers, params=params, timeout=10)
         
-        resposta = supabase.table("contatos").select("nome, telefone").limit(3).execute()
-        return resposta.data
-    except Exception as e:
-        logging.error(f"Erro ao buscar dados no Supabase: {e}")
+        if resposta.status_code == 200:
+            return resposta.json()
+        else:
+            logging.error(f"Erro na API do Supabase: Status {resposta.status_code} - {resposta.text}")
+            return []
+            
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erro de conexão com o Supabase: {e}")
         return []
 
 def enviar_mensagem_zapi(nome: str, telefone: str):
-    """Envia a mensagem padronizada via API da Z-API."""
+    # Envia a mensagem padronizada via API da Z-API
+    
     url = f"https://api.z-api.io/instances/{ZAPI_INSTANCE}/token/{ZAPI_TOKEN}/send-text"
     
     headers = {"Content-Type": "application/json"}
