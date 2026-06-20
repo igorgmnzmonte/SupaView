@@ -57,3 +57,27 @@ def enviar_mensagem_zapi(nome: str, telefone: str):
             
     except requests.exceptions.RequestException as e:
         logging.error(f"Erro de conexão com a Z-API ao tentar enviar para {nome}: {e}")
+    
+def main():
+    logging.info("Iniciando o fluxo integrado b2bflow...")
+    contatos = buscar_contatos()
+
+    if not contatos:
+        logging.warning("Nenhum contato encontrado ou falha na consulta ao banco.")
+        return
+
+    logging.info(f"{len(contatos)} contato(s) retornado(s). Iniciando envios...")
+    
+    for contato in contatos:
+        nome = contato.get("nome")
+        telefone = contato.get("telefone")
+
+        if nome and telefone:
+            enviar_mensagem_zapi(nome, telefone)
+        else:
+            logging.warning(f"Registro inválido ignorado: {contato}")
+
+    logging.info("Fluxo finalizado com sucesso!")
+
+if __name__ == "__main__":
+    main()
